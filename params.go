@@ -299,11 +299,73 @@ func ParseUpdateMongo(updates []UpdatePart) mgo.Change {
 func ParseParamsGorm(db *gorm.DB, params Params) *gorm.DB {
 
 	//Query
+	var queryFields []string
+	var queryVals []interface{}
+	// var orQuery []QueryPart
+	var orQueryFields []string
+	var orQueryVals []interface{}
 	var orQuery [][]QueryPart
 	allOrQuery := []struct {
 		orQueryFields []string
 		orQueryVals   []interface{}
 	}{}
+	for _, queryPart := range params.Query {
+
+		// $or
+		if queryPart.Operator == "$or" {
+			// orQuery = queryPart.Value.([]QueryPart)
+			orQuery = append(orQuery, queryPart.Value.([]QueryPart))
+		}
+
+		//$eq
+		if queryPart.Operator == "$eq" {
+			queryFields = append(queryFields, queryPart.Field+" = ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$ne
+		if queryPart.Operator == "$ne" {
+			queryFields = append(queryFields, queryPart.Field+" <> ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$in
+		if queryPart.Operator == "$in" {
+			queryFields = append(queryFields, queryPart.Field+" IN(?)")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$lt
+		if queryPart.Operator == "$lt" {
+			queryFields = append(queryFields, queryPart.Field+" < ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$lte
+		if queryPart.Operator == "$lte" {
+			queryFields = append(queryFields, queryPart.Field+" <= ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$gt
+		if queryPart.Operator == "$gt" {
+			queryFields = append(queryFields, queryPart.Field+" > ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$gte
+		if queryPart.Operator == "$gte" {
+			queryFields = append(queryFields, queryPart.Field+" >= ?")
+			queryVals = append(queryVals, queryPart.Value)
+		}
+
+		//$regex
+		if queryPart.Operator == "$regex" {
+			queryFields = append(queryFields, queryPart.Field+" LIKE ?")
+			queryVals = append(queryVals, "%"+queryPart.Value.(string)+"%")
+		}
+	}
+
 	for _, orQueryPart := range orQuery {
 
 		var orQueryFields []string
@@ -368,8 +430,15 @@ func ParseParamsGorm(db *gorm.DB, params Params) *gorm.DB {
 			orQueryVals   []interface{}
 		}{orQueryFields, orQueryVals})
 	}
-
 	// Build
+	if len(queryFields) > 0 && len(queryVals) > 0 && len(queryFields) == len(queryVals) {
+		db = db.Where(strings.Join(queryFields, " AND "), queryVals...)
+	}
+
+	// OR
+	if len(orQueryFields) > 0 && len(orQueryVals) > 0 && len(orQueryFields) == len(orQueryVals) {
+		db = db.Where(strings.Join(orQueryFields, " OR "), orQueryVals...)
+	}
 	if len(allOrQuery) > 0 {
 		var orFields []string
 		var orValues []interface{}
