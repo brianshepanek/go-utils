@@ -303,11 +303,17 @@ func ParseParamsGorm(db *gorm.DB, params Params) *gorm.DB {
 	var orQuery []QueryPart
 	var orQueryFields []string
 	var orQueryVals []interface{}
+	// var orQuery [][]QueryPart
+	// allOrQuery := []struct {
+	// 	orQueryFields []string
+	// 	orQueryVals   []interface{}
+	// }{}
 	for _, queryPart := range params.Query {
 
 		// $or
 		if queryPart.Operator == "$or" {
 			orQuery = queryPart.Value.([]QueryPart)
+			// orQuery = append(orQuery, queryPart.Value.([]QueryPart))
 		}
 
 		//$eq
@@ -409,7 +415,72 @@ func ParseParamsGorm(db *gorm.DB, params Params) *gorm.DB {
 			orQueryVals = append(orQueryVals, "%"+orQueryPart.Value.(string)+"%")
 		}
 	}
+	/*
+		for _, orQueryPart := range orQuery {
 
+			var orQueryFields []string
+			var orQueryVals []interface{}
+			for _, orQueryPart := range orQueryPart {
+
+				//$eq
+				if orQueryPart.Operator == "$eq" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" = ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$ne
+				if orQueryPart.Operator == "$ne" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" <> ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$in
+				if orQueryPart.Operator == "$in" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" IN(?)")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$lt
+				if orQueryPart.Operator == "$lt" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" < ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$lte
+				if orQueryPart.Operator == "$lte" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" <= ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$gt
+				if orQueryPart.Operator == "$gt" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" > ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//$gte
+				if orQueryPart.Operator == "$gte" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" >= ?")
+					orQueryVals = append(orQueryVals, orQueryPart.Value)
+				}
+
+				//is
+				if orQueryPart.Operator == "is" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" IS NULL")
+				}
+
+				//$regex
+				if orQueryPart.Operator == "$regex" {
+					orQueryFields = append(orQueryFields, orQueryPart.Field+" LIKE ?")
+					orQueryVals = append(orQueryVals, "%"+orQueryPart.Value.(string)+"%")
+				}
+			}
+			allOrQuery = append(allOrQuery, struct {
+				orQueryFields []string
+				orQueryVals   []interface{}
+			}{orQueryFields, orQueryVals})
+		}
+	*/
 	// Build
 	if len(queryFields) > 0 && len(queryVals) > 0 && len(queryFields) == len(queryVals) {
 		db = db.Where(strings.Join(queryFields, " AND "), queryVals...)
@@ -419,6 +490,19 @@ func ParseParamsGorm(db *gorm.DB, params Params) *gorm.DB {
 	if len(orQueryFields) > 0 && len(orQueryVals) > 0 && len(orQueryFields) == len(orQueryVals) {
 		db = db.Where(strings.Join(orQueryFields, " OR "), orQueryVals...)
 	}
+	// if len(allOrQuery) > 0 {
+	// 	var orFields []string
+	// 	var orValues []interface{}
+	// 	for _, v := range allOrQuery {
+	// 		orQueryFields := v.orQueryFields
+	// 		orQueryVals := v.orQueryVals
+	// 		orFields = append(orFields, fmt.Sprintf("(%v)", strings.Join(orQueryFields, " OR ")))
+	// 		orValues = append(orValues, orQueryVals...)
+	// 	}
+	// 	if len(orFields) > 0 {
+	// 		db = db.Where(strings.Join(orFields, " AND "), orValues...)
+	// 	}
+	// }
 
 	//Fields
 	if len(params.Fields) > 0 {
